@@ -6,9 +6,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.sonar.check.Rule;
 import org.sonar.check.RuleProperty;
+import org.sonar.plugins.java.api.IssuableSubscriptionVisitor;
 import org.sonar.plugins.java.api.tree.AnnotationTree;
 import org.sonar.plugins.java.api.tree.ArrayAccessExpressionTree;
 import org.sonar.plugins.java.api.tree.ArrayTypeTree;
@@ -28,8 +32,17 @@ import org.sonar.plugins.java.api.tree.UnaryExpressionTree;
  * check.
  */
 @Rule(key = "NoWhitespaceAfterCheck", description = "Checks that there is no whitespace after a token. More specifically, it checks that it is not followed by whitespace, or (if line breaks are allowed) all characters on the line after are whitespace. To forbid lineBreaks after a token, set property allowLineBreaks to false.")
-public class NoWhitespaceAfterCheck extends NoWhitespaceCheck {
+public class NoWhitespaceAfterCheck extends IssuableSubscriptionVisitor {
 
+	/** RegEx to check preceding line breaks. */
+	protected static final String REGEX_PRECEDING_LINE_BREAK = "\\R\\s*";
+	/** RegEx to check if there is a preceding annotation. */
+	protected static final String REGEX_PRECEDING_ANNOTATION = ".*@\\w*(\\s*)?";
+	/** RegEx to check preceding whitespace */
+	protected static final String REGEX_PRECEDING_WHITESPACE = "\\s";
+
+	@RuleProperty(key = "allowLineBreaks", description = "Allow line breaks", defaultValue = "true")
+	private boolean allowLineBreaks = true;
 	@RuleProperty(key = "annotation", description = "Annotation '@'", defaultValue = "true")
 	private boolean annotationDefault = true;
 	@RuleProperty(key = "arrayAccessExpression", description = "Array Access Expression'[i]'", defaultValue = "true")
@@ -59,6 +72,8 @@ public class NoWhitespaceAfterCheck extends NoWhitespaceCheck {
 	@RuleProperty(key = "unaryPlus", description = "Unary Plus '+i'", defaultValue = "true")
 	private boolean unaryPlusDefault = true;
 
+	private final String lineSeperator = System.lineSeparator();
+
 	private final List<Kind> afterKindGroup = Arrays.asList(Kind.ANNOTATION,
 			Kind.BITWISE_COMPLEMENT,
 			Kind.LOGICAL_COMPLEMENT,
@@ -85,8 +100,6 @@ public class NoWhitespaceAfterCheck extends NoWhitespaceCheck {
 
 	@Override
 	public void visitNode(Tree pTree) {
-		super.visitNode(pTree);
-
 		kindMap = createKindMap();
 		final SyntaxToken tokenUnderTest = getTokenUnderTest(pTree);
 
@@ -202,6 +215,121 @@ public class NoWhitespaceAfterCheck extends NoWhitespaceCheck {
 
 	private boolean isInBeforeKindGroup(Tree pTree) {
 		return pTree.is(beforeKindGroup.toArray(new Kind[0]));
+	}
+
+	/**
+	 * Checks if a preceding whitespace exists before a token.
+	 *
+	 * @param pSyntaxToken
+	 *            the token to check if it has a preceding whitespace.
+	 * @return <code>true</code>, if a preceding whitespace exists before the
+	 *         given token.
+	 */
+	protected boolean hasWhitespaceBefore(SyntaxToken pSyntaxToken) {
+		boolean result = false;
+
+		final boolean lineBreak = isRegExMatchingLeftSidedCharsOfToken(pSyntaxToken, REGEX_PRECEDING_LINE_BREAK);
+		if (!lineBreak) {
+			final boolean whitespace = isRegExMatchingLeftSidedCharsOfToken(pSyntaxToken, REGEX_PRECEDING_WHITESPACE);
+			result = whitespace;
+
+		} else {
+			result = !allowLineBreaks;
+		}
+
+		return result;
+	}
+
+	/**
+	 * Checks if a given RegEx matches the left sided char set of a given token.
+	 * The RegEx will be applied to a String that starts at the beginning of the
+	 * code until the left neighbor of the given token.
+	 *
+	 * @param pSyntaxToken
+	 *            the token whose left sided characters are to check.
+	 * @param pRegEx
+	 *            the RegEx to apply.
+	 * @return <code>true</code> if the RegEx matches.
+	 */
+	protected boolean isRegExMatchingLeftSidedCharsOfToken(SyntaxToken pSyntaxToken, String pRegEx) {
+		final int tokenColumnIndex = pSyntaxToken.range().start().column() - 1;
+		final int tokenLineIndex = pSyntaxToken.range().start().line() - 1;
+
+		String codeText = context.getFileLines().stream().collect(Collectors.joining(lineSeperator));
+
+		final int charIndex = findCharIndex(codeText, tokenLineIndex, tokenColumnIndex);
+		final int charIndexLeftNeighbor = charIndex - 1;
+		final String subString = codeText.substring(0, charIndexLeftNeighbor + 1);
+
+		final String regex = pRegEx + "\\z";
+		final Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+		final Matcher matcher = pattern.matcher(subString);
+
+		return matcher.find();
+	}
+
+	/**
+	 * Checks if a given RegEx matches the right sided char set of a given
+	 * token. The RegEx will be applied to a String that starts at the beginning
+	 * of the token until the end of the code.
+	 *
+	 * @param pSyntaxToken
+	 *            the token whose right sided characters are to check.
+	 * @param pRegEx
+	 *            the RegEx to apply.
+	 * @return <code>true</code> if the RegEx matches.
+	 */
+	protected boolean isRegExMatchingRightSidedCharsOfToken(SyntaxToken pSyntaxToken, String pRegEx) {
+		final int tokenColumnIndex = pSyntaxToken.range().end().column() - 1;
+		final int tokenLineIndex = pSyntaxToken.range().end().line() - 1;
+
+		String codeText = context.getFileLines().stream().collect(Collectors.joining(lineSeperator));
+
+		final int charIndex = findCharIndex(codeText, tokenLineIndex, tokenColumnIndex);
+		final String subString = codeText.substring(charIndex, codeText.length());
+
+		final String regex = "\\A" + pRegEx;
+		final Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+		final Matcher matcher = pattern.matcher(subString);
+
+		return matcher.find();
+	}
+
+	/**
+	 * Finds the index (0-based) of a given token in a code text.
+	 * 
+	 * @param pCodeText
+	 *            the code text to find the token in.
+	 * @param pLine
+	 *            the line of the token (0-based).
+	 * @pColumn the column of the token (0-based).
+	 * @return the index of a character in a text.
+	 */
+	private int findCharIndex(String pCodeText, int pLine, int pColumn) {
+		final String[] lines = pCodeText.split(lineSeperator);
+
+		int codePointIndex = 0;
+		for (int i = 0; i < pLine; i++) {
+			codePointIndex += lines[i].length() + lineSeperator.length();
+		}
+		codePointIndex += pColumn;
+
+		return codePointIndex;
+	}
+
+	/**
+	 * Setter to control whether whitespace is allowed if the token is at a line
+	 * break.
+	 *
+	 * @param pAllowLineBreaks
+	 *            whether whitespace should be flagged at line breaks.
+	 */
+	public void setAllowLineBreaks(boolean pAllowLineBreaks) {
+		allowLineBreaks = pAllowLineBreaks;
+	}
+
+	protected boolean getAllowLineBreaks() {
+		return allowLineBreaks;
 	}
 
 	/**
