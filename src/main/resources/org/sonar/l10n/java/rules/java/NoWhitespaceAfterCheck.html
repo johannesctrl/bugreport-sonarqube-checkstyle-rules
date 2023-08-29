@@ -1,0 +1,26 @@
+<p>Checks that there is no whitespace after a token. More specifically, it checks that it is not followed by whitespace, or (if linebreaks are allowed) all characters on the line after are whitespace. To forbid linebreaks after a token, set property allowLineBreaks to false.</p>
+
+<h2>Noncompliant Code Example</h2>
+<pre>
+class Test {
+	public void incrementPrefix(int a) {
+		a = ++ a; // Noncompliant - '++' is followed by whitespace.
+	}
+	public void dotOperator(String s) {
+		Integer. // Noncompliant (if linebreaksAllowed is set to 'false') - '.' is followed by whitespace.
+		parseInt(s);
+	}
+}
+</pre>
+
+<h2>Compliant Solution</h2>
+<pre>
+class Test {
+	public void incrementPrefix(int a) {
+		a = ++a; // Compliant
+	}
+	public void dotOperator(String s) {
+		Integer.parseInt(s); // Compliant
+	}
+}
+</pre>

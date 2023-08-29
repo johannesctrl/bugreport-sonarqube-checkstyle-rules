@@ -1,0 +1,8 @@
+{
+  "title": "No Whitespace Before Check",
+  "type": "CODE_SMELL",
+  "status": "ready",
+  "tags": [
+  ],
+  "defaultSeverity": "Major"
+}

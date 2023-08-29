@@ -1,0 +1,181 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>de.johannes.sonarqube.checkstyle.rules.plugin</groupId>
+	<artifactId>sonarqube_checkstyle_rules</artifactId>
+	<version>2.0.0-SNAPSHOT</version>
+	<packaging>sonar-plugin</packaging>
+
+	<name>johannes-sonarqube-checkstyle-rules</name>
+	<description>Johannes Java custom code style rules for SonarQube</description>
+	
+	<properties>
+		<java.version>11</java.version>
+		<maven.compiler.source>${java.version}</maven.compiler.source>
+		<maven.compiler.target>${java.version}</maven.compiler.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<sonar.version>9.5.0.56709</sonar.version>
+		<sonar.plugin.api.version>9.7.0.160</sonar.plugin.api.version>
+		<sonar.java.version>7.14.0.30229</sonar.java.version>
+		<analyzer.commons.version>2.1.0.1111</analyzer.commons.version>
+
+		<slf4j-api.version>1.7.36</slf4j-api.version>
+		<junit.version>5.9.2</junit.version>
+		<assertj-core.version>3.23.1</assertj-core.version>
+		<logback-classic.version>0.9.30</logback-classic.version>
+		<eclipse.jdt.version>3.29.0</eclipse.jdt.version>
+	</properties>
+
+	<build>
+		
+		<!--  define sources directory structure here -->    
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <testSourceDirectory>src/test/java</testSourceDirectory>
+		
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+			</resource>
+		</resources>
+	
+		<plugins>
+			<plugin>
+				<groupId>org.sonarsource.sonar-packaging-maven-plugin</groupId>
+				<artifactId>sonar-packaging-maven-plugin</artifactId>
+				<version>1.21.0.505</version>
+				<extensions>true</extensions>
+				<configuration>
+					<pluginKey>johannes-java-checkstyle-rules</pluginKey>
+					<pluginName>Johannes Java Checkstyle Rules</pluginName>
+					<pluginClass>de.johannes.sonarqube.checkstyle.rules.plugin.JavaRulesPlugin</pluginClass>
+					<sonarLintSupported>true</sonarLintSupported>
+					<skipDependenciesPackaging>true</skipDependenciesPackaging>
+					<sonarQubeMinVersion>8.9</sonarQubeMinVersion>
+					<requirePlugins>java:${sonar.java.version}</requirePlugins>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.0</version>
+				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+				</configuration>
+			</plugin>
+			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.6.0</version><!--$NO-MVN-MAN-VER$-->
+				<executions>
+					<execution>
+						<id>analyze</id>
+						<goals>
+							<goal>analyze-only</goal>
+						</goals>
+						<configuration>
+							<failOnWarning>false</failOnWarning>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.4.1</version>
+				<configuration>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<!-- MAIN sources dependencies -->
+		<dependency>
+			<groupId>org.sonarsource.api.plugin</groupId>
+			<artifactId>sonar-plugin-api</artifactId>
+			<version>${sonar.plugin.api.version}</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.sonarsource.java</groupId>
+			<artifactId>sonar-java-plugin</artifactId>
+			<type>sonar-plugin</type>
+			<version>${sonar.java.version}</version>
+			<scope>provided</scope>
+			<exclusions>
+				<!-- access is not allowed from a plugin -->
+				<exclusion>
+					<groupId>org.sonarsource.java</groupId>
+					<artifactId>java-checks</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.sonarsource.analyzer-commons</groupId>
+			<artifactId>sonar-analyzer-commons</artifactId>
+			<version>${analyzer.commons.version}</version>
+		</dependency>
+
+		<!-- TEST dependencies -->
+		<dependency>
+			<groupId>org.sonarsource.java</groupId>
+			<artifactId>java-checks-testkit</artifactId>
+			<version>${sonar.java.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-engine</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.assertj</groupId>
+			<artifactId>assertj-core</artifactId>
+			<version>${assertj-core.version}</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>${logback-classic.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
+			<version>${junit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<!-- TESTFILE dependencies -->
+		<dependency>
+			<groupId>org.checkerframework</groupId>
+			<artifactId>checker-qual</artifactId>
+			<version>3.37.0</version>
+			<scope>test</scope>
+		</dependency>
+
+	</dependencies>
+</project>

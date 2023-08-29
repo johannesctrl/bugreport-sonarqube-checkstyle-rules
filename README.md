@@ -1,0 +1,1 @@
+This is a repository to report an issue that I faced during the development of a SonarQube Java rule.

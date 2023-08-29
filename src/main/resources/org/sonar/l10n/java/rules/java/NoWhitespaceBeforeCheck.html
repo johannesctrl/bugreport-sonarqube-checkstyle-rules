@@ -1,0 +1,62 @@
+<p>Checks that there is no whitespace before a token. More specifically, it checks that it is not preceded with whitespace, or (if line breaks are allowed) all characters on the line before are whitespace.)</p>
+
+<h2>Default Settings</h2>
+<pre>
+int foo;
+foo ++; // violation, whitespace before '++' is not allowed
+foo++; // OK
+for (int i = 0 ; i < 5; i++) {}  // violation
+           // ^ whitespace before ';' is not allowed
+for (int i = 0; i < 5; i++) {} // OK
+int[][] array = { { 1, 2 }
+                , { 3, 4 } }; // violation, whitespace before ',' is not allowed
+int[][] array2 = { { 1, 2 },
+                   { 3, 4 } }; // OK
+Lists.charactersOf("foo").listIterator()
+       .forEachRemaining(System.out::print)
+       ; // violation, whitespace before ';' is not allowed
+{
+  label1 : // violation, whitespace before ':' is not allowed
+  for (int i = 0; i < 10; i++) {}
+}
+
+{
+  label2: // OK
+  while (true) {}
+}
+</pre>
+
+<h2>Allowing Line Breaks</h2>
+<pre>
+int[][] array = { { 1, 2 }
+                , { 3, 4 } }; // OK, linebreak is allowed before ','
+int[][] array2 = { { 1, 2 },
+                   { 3, 4 } }; // OK, ideal code
+void ellipsisExample(String ...params) {}; // violation, whitespace before '...' is not allowed
+void ellipsisExample2(String
+                        ...params) {}; //OK, linebreak is allowed before '...'
+Lists.charactersOf("foo")
+       .listIterator()
+       .forEachRemaining(System.out::print); // OK
+</pre>
+
+<h2>Restricting the use of whitespace before Method Reference and Dot tokens:</h2>
+<pre>
+Lists.charactersOf("foo").listIterator()
+       .forEachRemaining(System.out::print); // violation, whitespace before '.' is not allowed
+Lists.charactersOf("foo").listIterator().forEachRemaining(System.out ::print); // violation,
+                          // whitespace before '::' is not allowed  ^
+Lists.charactersOf("foo").listIterator().forEachRemaining(System.out::print); // OK
+</pre>
+
+
+<h2>Restricting the use of whitespace before Method Reference and Dot tokens AND allowing line breaks:</h2>
+<pre>
+Lists .charactersOf("foo") //violation, whitespace before '.' is not allowed
+        .listIterator()
+        .forEachRemaining(System.out ::print); // violation,
+                                 // ^ whitespace before '::' is not allowed
+Lists.charactersOf("foo")
+       .listIterator()
+       .forEachRemaining(System.out::print); // OK
+</pre>
